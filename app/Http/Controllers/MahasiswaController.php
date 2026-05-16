@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Mahasiswa;
+use App\Models\Dosen;
 
 class MahasiswaController extends Controller
 {
@@ -21,7 +22,8 @@ class MahasiswaController extends Controller
      */
     public function create()
     {
-        //
+        $dosens = Dosen::all(); 
+        return view('mahasiswa.create', compact('dosens'));
     }
 
     /**
@@ -29,7 +31,15 @@ class MahasiswaController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+        'npm' => 'required|unique:mahasiswa_table,npm',  
+        'nama' => 'required|string|max:100',
+        'nidn' => 'nullable|exists:dosen_table,nidn',    
+    ]);
+
+        Mahasiswa::create($request->only('npm', 'nama', 'nidn'));
+
+        return redirect()->route('mahasiswa.index')->with('success', 'Mahasiswa berhasil ditambahkan.');
     }
 
     /**
@@ -37,30 +47,48 @@ class MahasiswaController extends Controller
      */
     public function show(string $id)
     {
-        //
+        $mahasiswa = Mahasiswa::with(['dosen', 'krs.mataKuliah'])->findOrFail($id);
+        return view('mahasiswa.show', compact('mahasiswa'));
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(string $id)
+    public function edit($npm)
     {
-        //
+        $mahasiswa = Mahasiswa::findOrFail($npm);
+        $dosens = \App\Models\Dosen::all();
+        
+        return view('mahasiswa.edit', compact('mahasiswa', 'dosens'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(Request $request, $npm)
     {
-        //
+        $mahasiswa = Mahasiswa::findOrFail($npm);    // ✅ Cari via npm
+    
+        $request->validate([
+            // ✅ Format unique untuk primary key custom: 'unique:table,field,excludeValue,excludeColumn'
+            'npm' => 'required|unique:mahasiswa_table,npm,' . $mahasiswa->npm . ',npm',
+            'nama' => 'required|string|max:100',
+            'nidn' => 'nullable|exists:dosen_table,nidn',
+        ]);
+
+        $mahasiswa->update($request->only('npm', 'nama', 'nidn'));
+
+        return redirect()->route('mahasiswa.index')->with('success', 'Mahasiswa berhasil diperbarui.');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy($npm)
     {
-        //
+        $mahasiswa = Mahasiswa::findOrFail($npm);
+        $mahasiswa->delete();
+        
+        return redirect()->route('mahasiswa.index')->with('success', 'Mahasiswa berhasil dihapus.');
     }
 }
